@@ -2,31 +2,58 @@
 // Created by texlo on 4/23/19.
 //
 
-#include "spectacles.h"
+#include "../../include/spectacles.h"
+#include "SimpleAmqpClient/SimpleAmqpClient.h"
 #include <thread>
+#include <amqp.h>
 
-void AmqpConsumer::consume(std::string event, std::function<void(std::string)> handler)
+namespace spectacles
 {
-    if (connection == nullptr)
+    namespace brokers
     {
-        connection = AmqpClient::Channel::Create(amqp_uri);
-    };
+        void AmqpConsumer::connect(std::string uri, std::vector<std::string> events)
+        {
+            std::thread([events, uri, this]()
+                        {
+                            connection = AmqpClient::Channel::CreateFromUri(uri);
+                            connection->DeclareExchange(group, AmqpClient::Channel::EXCHANGE_TYPE_DIRECT, false, true,
+                                                        false);
+                            std::string queue;
+                            for (auto &event: events)
+                            {
+                                if (subgroup.empty())
+                                {
+                                    queue = group + ":" + event;
+                                } else
+                                {
+                                    queue = group + ":" + subgroup + ":" + event;
+                                }
+                                std::string queueName = connection->DeclareQueue(queue, false, true, false, false);
+                                connection->BindQueue(queueName, group);
+                                std::string consumer_tag = connection->BasicConsume(queueName, "", false, false, false);
+                                AmqpClient::Envelope::ptr_t envelope;
+                                while ((envelope = connection->BasicConsumeMessage(consumer_tag)) && envelope)
+                                {
+                                    connection->BasicAck(envelope);
+                                    eventHandler(event, envelope->Message());
+                                }
+                            };
+                        }).detach();
+        }
 
-    connection->DeclareExchange(group, AmqpClient::Channel::EXCHANGE_TYPE_DIRECT, false, true, false);
-    std::string queue;
-    if (subgroup.empty())
-    {
-        queue = group + ":" + event;
-    } else
-    {
-        queue = group + ":" + subgroup + ":" + event;
+        void AmqpConsumer::onMessage(std::function<void(std::string, AmqpClient::BasicMessage::ptr_t)> handler)
+        {
+            eventHandler = handler;
+        }
+
+        void AmqpProducer::connect(std::string uri)
+        {
+            connection = AmqpClient::Channel::CreateFromUri(uri);
+        }
+
+        void AmqpProducer::publish(std::string event, AmqpClient::BasicMessage::ptr_t message)
+        {
+            connection->BasicPublish(group, event, message);
+        }
     }
-    connection->BindQueue(queue, group);
-    std::string queueName = connection->DeclareQueue(queue, false, true, false);
-    std::string consumer_tag = connection->BasicConsume(queueName, "", false, false, false);
-}
-
-void AmqpProducer::publish(std::string event, std::string payload)
-{
-
 }

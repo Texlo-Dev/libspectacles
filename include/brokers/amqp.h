@@ -2,42 +2,46 @@
 // Created by texlo on 4/23/19.
 //
 
-#include "spectacles.h"
-#include <SimpleAmqpClient/SimpleAmqpClient.h>
+#include <string.h>
+
+#include "SimpleAmqpClient/SimpleAmqpClient.h"
+#include "../spectacles.h"
 
 #ifndef SPECTACLES_INCLUDE_AMQP_H
 #define SPECTACLES_INCLUDE_AMQP_H
 
-
-class AmqpConsumer : Consumer
+namespace spectacles
 {
-private:
-    AmqpClient::Channel::ptr_t connection;
-public:
-    std::string amqp_uri;
-
-    explicit AmqpConsumer(std::string uri, std::string g, std::string sg) : Consumer(g, sg)
+    namespace brokers
     {
-        amqp_uri = uri;
+        class AmqpConsumer : Consumer
+        {
+        private:
+            AmqpClient::Channel::ptr_t connection;
+            std::function<void(std::string, AmqpClient::BasicMessage::ptr_t)> eventHandler;
+        public:
+            explicit AmqpConsumer(std::string g, std::string sg) : Consumer(g, sg)
+            {}
+
+            void connect(std::string uri, std::vector<std::string> events) override;
+
+            void onMessage(std::function<void(std::string, AmqpClient::BasicMessage::ptr_t)> handler);
+        };
+
+        class AmqpProducer : Producer
+        {
+        private:
+            AmqpClient::Channel::ptr_t connection;
+        public:
+            explicit AmqpProducer(std::string g, std::string sg) : Producer(g, sg)
+            {}
+
+            void connect(std::string uri) override;
+
+            void publish(std::string event, AmqpClient::BasicMessage::ptr_t message);
+        };
     }
-
-    void consume(std::string event, std::function<void(std::string)> handler) override;
-};
-
-class AmqpProducer : Producer
-{
-private:
-    AmqpClient::Channel::ptr_t connection;
-public:
-    std::string amqp_uri;
-
-    explicit AmqpProducer(std::string uri, std::string g, std::string sg) : Producer(g, sg)
-    {
-        amqp_uri = uri;
-    }
-
-    void publish(std::string event, std::string data) override;
-};
+}
 
 
 #endif //SPECTACLES_INCLUDE_AMQP_H

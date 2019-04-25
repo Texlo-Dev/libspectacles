@@ -18,6 +18,7 @@ public:
         subgroup = sg;
     }
 
+    virtual void connect(std::string uri);
     virtual void publish(std::string event, std::string payload);
 };
 

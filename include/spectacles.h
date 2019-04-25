@@ -12,7 +12,9 @@
 
 #include "brokers/consumer.h"
 #include "brokers/producer.h"
+#include "SimpleAmqpClient/BasicMessage.h"
 #include "brokers/amqp.h"
 #include "gateway/Manager.h"
+#include "gateway/Shard.h
 
 #endif //SPECTACLES_SPECTACLES_H

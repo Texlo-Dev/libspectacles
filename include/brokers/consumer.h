@@ -19,9 +19,9 @@ public:
         subgroup = sg;
     }
 
-    virtual void connect();
+    virtual void connect(std::string uri, std::vector<std::string> events);
 
-    virtual void consume(std::string event, std::function<void(std::string)> handler);
+    virtual void onMessage(std::function<void(std::string)> handler);
 };
 
 
